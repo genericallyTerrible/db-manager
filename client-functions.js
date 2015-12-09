@@ -14,6 +14,7 @@ jQuery( document ).ready( function( $ ) {
 		wpdb_prefix + "options",
 		wpdb_prefix + "postmeta",
 		wpdb_prefix + "posts",
+		wpdb_prefix + "termmeta",
 		wpdb_prefix + "terms",
 		wpdb_prefix + "term_relationships",
 		wpdb_prefix + "term_taxonomy",
@@ -67,7 +68,7 @@ jQuery( document ).ready( function( $ ) {
 			//deselect the previous table (if it exists)
 			$( ".selected" ).toggleClass( "selected" );
 			//Get the information about the new table
-			ajax_table_info( table.text());
+			// ajax_table_info( table.text());
 		} else {
 			//The table is being de-selected
 			$( "#drop_selected_table" ).prop( "disabled", true);
@@ -143,7 +144,8 @@ jQuery( document ).ready( function( $ ) {
 
 	//AJAX Functions
 	function ajax_add_table( table_name, column_info, unique_key ) {
-		$.ajax({
+		$.blockUI();
+		var response = $.ajax({
 			type: "post",
 			url: ajax_url,
 			data: {
@@ -151,116 +153,133 @@ jQuery( document ).ready( function( $ ) {
 				table_name: table_name,
 				column_info: column_info,
 				unique_key: unique_key
-			},
-			success: function( response ) {
-				var results = $.parseJSON( response );
-				$.each( results, function( key, value ) {
-					console.log(value);
-				});
-				ajax_get_tables();
 			}
+		});
+
+		response.done( function( response ) {
+			var results = $.parseJSON( response );
+			// $.each( results, function( key, value ) {
+			// 	console.log(value);
+			// });
+			if( !$.isEmptyObject( results[0] )) //Changes were made
+				ajax_get_tables();
+		});
+
+		response.always( function() {
+			$.unblockUI();
 		});
 	}
 
 	function ajax_drop_table( table_name ) {
-		$.ajax({
+		$.blockUI();
+		var request = $.ajax({
 			type: "post",
 			url: ajax_url,
 			data: {
 				action: "drop_table",
 				table_name: table_name
-			},
-			success: function( response ) {
-				var results = $.parseJSON( response );
-				console.log(results);
-				ajax_get_tables();
 			}
+		});
+
+		request.done( function( response ) {
+			var results = $.parseJSON( response );
+			// console.log(results);
+			ajax_get_tables();
+		});
+
+		request.always( function( response ) {
+			$.unblockUI();
 		});
 	}
 
 	function ajax_table_info( table_name ) {
-		$.ajax({
+		var request = $.ajax({
 			type: "post",
 			url: ajax_url,
 			data: {
 				action: "table_info",
 				table_name: table_name
-			},
-			success: function( response ) {
-				var results = $.parseJSON( response );
-				//console.log( results ); //Major debugging help.
-				var table_names = "";
-				if( results != null ) {
-					$.each( results, function( column, column_info ) {
-						table_names += column_info["COLUMN_NAME"] + ", "
-						//console.log( column_info["COLUMN_NAME"] );
-						ajax_column_info( table_name, column_info["COLUMN_NAME"] );
-					});
-					table_names = table_names.substring( 0, table_names.length - 2 );
-					console.log( table_names );
-				} else {
-					console.log( "Table has no structure." )
-				}
 			}
 		});
+
+		request.done( function( response ) {
+			var results = $.parseJSON( response );
+			//console.log( results ); //Major debugging help.
+			var table_names = "";
+			if( results != null ) {
+				$.each( results, function( column, column_info ) {
+					table_names += column_info["COLUMN_NAME"] + ", "
+					//console.log( column_info["COLUMN_NAME"] );
+					ajax_column_info( table_name, column_info["COLUMN_NAME"] );
+				});
+				table_names = table_names.substring( 0, table_names.length - 2 );
+				console.log( table_names );
+			} else {
+				console.log( "Table has no structure." )
+			}
+		});
+
 	}
 
 	function ajax_column_info( table_name, column_name ) {
-		$.ajax({
+		var request = $.ajax({
 			type: "post",
 			url: ajax_url,
 			data: {
 				action: "column_info",
 				table_name: table_name,
 				column_name: column_name
-			},
-			success: function ( response ) {
-				var results = $.parseJSON( response );
-				console.log( results[0] );
-				if( results[0] != null ) {
-					$.each( results[0], function( key, value ) {
-						if( key == "COLUMN_NAME" )    console.log( "COLUMN_NAME: "    + value );
-						if( key == "COLUMN_TYPE" )    console.log( "COLUMN_TYPE: "    + value );
-						if( key == "EXTRA" )          console.log( "EXTRA: "          + value );
-						if( key == "IS_NULLABLE" )    console.log( "IS_NULLABLE: "    + value );
-						if( key == "COLUMN_DEFAULT" ) console.log( "COLUMN_DEFAULT: " + value );
-						if( key == "COLUMN_COMMENT" ) console.log( "COLUMN_COMMENT: " + value );
-					});
-				}
 			}
 		});
+
+		request.done( function ( response ) {
+			var results = $.parseJSON( response );
+			console.log( results[0] );
+			if( results[0] != null ) {
+				$.each( results[0], function( key, value ) {
+					if( key == "COLUMN_NAME" )    console.log( "COLUMN_NAME: "    + value );
+					if( key == "COLUMN_TYPE" )    console.log( "COLUMN_TYPE: "    + value );
+					if( key == "EXTRA" )          console.log( "EXTRA: "          + value );
+					if( key == "IS_NULLABLE" )    console.log( "IS_NULLABLE: "    + value );
+					if( key == "COLUMN_DEFAULT" ) console.log( "COLUMN_DEFAULT: " + value );
+					if( key == "COLUMN_COMMENT" ) console.log( "COLUMN_COMMENT: " + value );
+				});
+			}
+		});
+
 	}
 
 	function ajax_get_tables() {
-		$.ajax({
+		var request = $.ajax({
 			type: "post",
 			url: ajax_url,
 			data: {
 				action: "get_tables",
-			},
-			success: function( response ) {
-				var results = $.parseJSON( response );
-				var table_names = [];
-				var tb_key = 0;
-				$.each( results, function( key, value ) {
-					table_names[tb_key++] = value;
-				});
-				wpdb_tables = table_names;
-				console.log(wpdb_tables);
-				generate_table_list();
-				if( !show ) {
-					hide_wp_tables();
-				}
 			}
 		});
+
+		request.done( function( response ) {
+			var results = $.parseJSON( response );
+			var table_names = [];
+			var tb_key = 0;
+			$.each( results, function( key, value ) {
+				table_names[tb_key++] = value;
+			});
+			wpdb_tables = table_names;
+			// console.log(wpdb_tables);
+			generate_table_list();
+			if( !show ) {
+				hide_wp_tables();
+			}
+		});
+
 	}
 
 	//End of AJAX functions
 
 	//HTML Generation
 	function generate_table_list() {
-		prev_selected = $( ".selected" ).text;
-
+		var prev_selected = $( ".selected" ).text();
 		$( "#db_table_list_container" ).empty();
 
 		var ret = "<ul id=\"db_table_list\" class=\"db_table_list\">"
@@ -277,12 +296,12 @@ jQuery( document ).ready( function( $ ) {
 
 		$( "#db_table_list_container" ).append(ret);
 		classify_li();
-
-		prev_selected = $( "table_name:contains('" + prev_selected + "')" );
-		if( prev_selected.length ) { //if exists
-			toggle_selected( prev_selected );
+		if( prev_selected != "" ) { //If there was a previously selected table
+			prev_selected = $( ".table_name:contains('" + prev_selected + "')" ); //Select the table
+			if( prev_selected.length ) { //If the previously selected exists currently
+				toggle_selected( prev_selected );``
+			}
 		}
-
 	}
 
 	//Credit: Pimp Trizkit @ http://stackoverflow.com/questions/5560248/programmatically-lighten-or-darken-a-hex-color-or-rgb-and-blend-colors

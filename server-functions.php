@@ -53,12 +53,12 @@ function add_table( $table_name, $column_info, $uniqueStatement ) {
 		//Get dbDelta
 		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 		$e = dbDelta( $sql ); //Pass the sql to create the table
-		return [var_dump($e), $sql];
+		return [$e, $sql];
 		//echo "<br>" . str_replace("\n", "<br>", $sql) . "<br>";
 		// echo "<br>Table add: ";
 		// var_dump($e);
 	}	else
-		return false;
+			return false;
 }
 
 function drop_table( $table_name ) {
